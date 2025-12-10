@@ -113,6 +113,7 @@ venv.bak/
 .venv
 media/
 !media/.gitkeep
+.env
 
 # Spyder project settings
 .spyderproject
