@@ -1,13 +1,12 @@
+import logging
+
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.account.models.users import User
 from src.account.schemas import UserCreate, UserUpdate
-
 from src.utils.password import hash_password
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +35,10 @@ class UserService:
 
     async def create(self, user_data: UserCreate):
         if await self.get_by_email(user_data.email):
-            raise ValueError(f"User with email {user_data.email} already exists")
+            raise ValueError(f"User with email {user_data.email} already exists")  # noqa: EM102
 
         if await self.get_by_username(user_data.username):
-            raise ValueError(f"User with username {user_data.username} already exists")
+            raise ValueError(f"User with username {user_data.username} already exists")  # noqa: EM102
 
         password_hash = hash_password(user_data.password)
         user = User(
@@ -54,7 +53,7 @@ class UserService:
             return user
         except IntegrityError as e:
             await self.session.rollback()
-            raise ValueError(f"Database error: {str(e)}")
+            raise ValueError(f"Database error: {str(e)}")  # noqa: B904, EM102
 
     async def update(self, user_id: str, user_data: UserUpdate) -> User | None:
         user = await self.get_by_id(user_id)

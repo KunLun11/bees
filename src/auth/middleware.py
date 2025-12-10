@@ -1,4 +1,5 @@
 from litestar.security.jwt import JWTAuth
+
 from src.auth.service import AuthService
 from src.core.config import config
 

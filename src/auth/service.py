@@ -1,13 +1,14 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import jwt
-from litestar.security.jwt import Token
 from litestar.connection import ASGIConnection
+from litestar.security.jwt import Token
 
 from src.account.models.users import User
 from src.account.services import UserService
-from src.utils.password import verify_password
 from src.core.config import config
+from src.utils.password import verify_password
 
 
 class AuthService:
@@ -22,7 +23,7 @@ class AuthService:
         user_service: UserService,
         email: str,
         password: str,
-    ) -> Optional[User]:
+    ) -> User | None:
         user = await user_service.get_by_email(email)
         if not user:
             return None
@@ -31,9 +32,7 @@ class AuthService:
         return None
 
     def create_access_token(self, user: User):
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=self.access_token_expire_minutes
-        )
+        expire = datetime.now(UTC) + timedelta(minutes=self.access_token_expire_minutes)
         payload = {
             "sub": str(user.id),
             "email": user.email,
@@ -48,9 +47,7 @@ class AuthService:
         )
 
     def create_refresh_token(self, user: User) -> str:
-        expire = datetime.now(timezone.utc) + timedelta(
-            days=self.refresh_token_expire_days
-        )
+        expire = datetime.now(UTC) + timedelta(days=self.refresh_token_expire_days)
 
         payload = {
             "sub": str(user.id),
@@ -66,7 +63,7 @@ class AuthService:
             algorithm=self.algorithm,
         )
 
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def verify_token(self, token: str) -> dict[str, Any] | None:
         try:
             payload = jwt.decode(
                 token,
@@ -81,10 +78,8 @@ class AuthService:
         self,
         token: Token,
         connection: ASGIConnection,
-    ) -> Optional[User]:
-        user_service: Optional[UserService] = connection.dependencies.get(
-            "user_service"
-        )
+    ) -> User | None:
+        user_service: UserService | None = connection.dependencies.get("user_service")
         if not user_service:
             user_service = connection.app.state.get("user_service")
             if not user_service:

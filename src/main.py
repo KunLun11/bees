@@ -1,7 +1,7 @@
 import os
+
 from dotenv import load_dotenv
 from litestar import Litestar
-
 from litestar.plugins.sqlalchemy import (
     AsyncSessionConfig,
     SQLAlchemyAsyncConfig,
@@ -11,7 +11,6 @@ from litestar.plugins.sqlalchemy import (
 from src.account.controller import UserController
 from src.auth.controller import AuthController
 from src.auth.middleware import jwt_auth
-
 
 load_dotenv()
 

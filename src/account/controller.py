@@ -1,17 +1,17 @@
 import logging
-from litestar import Controller, get, post, delete
+
+from litestar import Controller, delete, get, post
 from litestar.di import Provide
-from litestar.status_codes import (
-    HTTP_409_CONFLICT,
-    HTTP_201_CREATED,
-    HTTP_404_NOT_FOUND,
-    HTTP_204_NO_CONTENT,
-)
 from litestar.exceptions import HTTPException
+from litestar.status_codes import (
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+)
 
 from src.account.schemas import UserCreate, UserListResponse, UserResponse
 from src.account.services import UserService, provide_user_service
-
 from src.auth.middleware import jwt_auth
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class UserController(Controller):
             user = await user_service.create(data)
             return UserResponse.model_validate(user)
         except ValueError as e:
-            raise HTTPException(status_code=HTTP_409_CONFLICT, detail=str(e))
+            raise HTTPException(status_code=HTTP_409_CONFLICT, detail=str(e))  # noqa: B904
 
     @get(path="/users/{user_id:int}")
     async def get_user(
