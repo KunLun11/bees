@@ -1,15 +1,16 @@
-from logging.config import fileConfig
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.future import Connection
 import asyncio
-from sqlalchemy import pool
-from alembic import context
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.future import Connection
+
 from account.models.base import Base
 from account.models.oauth import OAuthAccount
 from account.models.users import User
-
 
 _ = User.__table__
 _ = OAuthAccount.__table__

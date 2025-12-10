@@ -1,9 +1,12 @@
+import logging
+
 from litestar import Controller, post
+from litestar.di import Provide
 from litestar.exceptions import HTTPException
 from litestar.status_codes import (
-    HTTP_401_UNAUTHORIZED,
     HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
 )
 
 from src.account.schemas import UserCreate
@@ -16,9 +19,6 @@ from src.auth.schemas import (
     TokenResponse,
 )
 from src.auth.service import AuthService
-from litestar.di import Provide
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +55,8 @@ class AuthController(Controller):
             }
         except ValueError as e:
             if "already exists" in str(e).lower():
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
-            raise HTTPException(
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))  # noqa: B904
+            raise HTTPException(  # noqa: B904
                 status_code=HTTP_400_BAD_REQUEST, detail=f"Validation error: {str(e)}"
             )
 
@@ -102,7 +102,7 @@ class AuthController(Controller):
         try:
             user_id = int(payload["sub"])
         except (ValueError, TypeError):
-            raise HTTPException(
+            raise HTTPException(  # noqa: B904
                 status_code=HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
             )
         user = await user_service.get_by_id(user_id)

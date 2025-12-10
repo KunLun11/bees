@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from datetime import datetime
-from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserCreate(BaseModel):
@@ -13,23 +13,26 @@ class UserCreate(BaseModel):
     def validate_username(cls, v: str) -> str:
         v = v.strip()
         if len(v) < 3:
-            raise ValueError("Username must be at least 3 characters")
+            msg = "Username must be at least 3 characters"
+            raise ValueError(msg)
         if len(v) > 50:
-            raise ValueError("Username must be less than 50 characters")
+            msg = "Username must be less than 50 characters"
+            raise ValueError(msg)
         return v
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
         if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
+            msg = "Password must be at least 8 characters"
+            raise ValueError(msg)
         return v
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
+    email: EmailStr | None = None
+    username: str | None = None
+    password: str | None = None
 
 
 class UserResponse(BaseModel):
