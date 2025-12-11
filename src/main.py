@@ -10,7 +10,6 @@ from litestar.plugins.sqlalchemy import (
 
 from src.account.controller import UserController
 from src.auth.controller import AuthController
-from src.auth.middleware import jwt_auth
 
 load_dotenv()
 
@@ -28,5 +27,4 @@ sqlalchemy_plugin = SQLAlchemyInitPlugin(config=sqlalchemy_config)
 app = Litestar(
     route_handlers=[UserController, AuthController],
     plugins=[sqlalchemy_plugin],
-    middleware=[jwt_auth.middleware],
 )
