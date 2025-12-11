@@ -19,6 +19,7 @@ help:
 	@echo "  $(GREEN)run$(NC)          - Запуск приложения (production)"
 	@echo "  $(GREEN)run-dev$(NC)      - Запуск приложения (development)"
 	@echo "  $(GREEN)clean$(NC)        - Очистка временных файлов"
+	@echo "  $(GREEN)stop$(NC)         - Остановить приложение"
 
 install:
 	pip install -r requirements.txt
@@ -54,6 +55,13 @@ upgrade:
 downgrade:
 	cd src && alembic downgrade -1
 
+stop:
+	@echo "Останавливаем сервер..."
+	-pkill -f "granian.*src.main:app" 2>/dev/null || true
+	-pkill -f "python" 2>/dev/null || true
+	@sleep 1
+	@echo "Сервер остановлен"
+
 # Запуск приложения
 run:
 	granian \
@@ -73,6 +81,19 @@ run-dev:
 		--interface asgi \
 		--reload \
 		src.main:app
+
+run-debug:
+	uvicorn src.main:app \
+		--host 0.0.0.0 \
+		--port 8000 \
+		--reload \
+		--log-level debug \
+		--workers 1
+
+kill-port:
+	@echo "Убиваем процессы на порту 8000..."
+	-$(shell kill -9 $$(lsof -t -i :8000) 2>/dev/null || true)
+	@echo "Порт 8000 освобождён."
 
 # Очистка
 clean:
