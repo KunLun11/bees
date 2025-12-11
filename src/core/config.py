@@ -30,6 +30,7 @@ class AuthConfig:
         os.getenv("REQUIRE_EMAIL_VERIFICATION", "false").lower() == "true"
     )
 
+
 @dataclass
 class AppConfig:
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
@@ -37,7 +38,12 @@ class AppConfig:
     port: int = int(os.getenv("PORT", "8000"))
 
 
+@dataclass
 class Config:
+    database: DatabaseConfig
+    auth: AuthConfig
+    app: AppConfig
+
     def __init__(self):
         self.database = DatabaseConfig()
         self.auth = AuthConfig()

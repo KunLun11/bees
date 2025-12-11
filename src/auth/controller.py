@@ -1,16 +1,13 @@
 import logging
+from datetime import timedelta
 
 from litestar import Controller, post
 from litestar.di import Provide
 from litestar.exceptions import HTTPException
-from litestar.status_codes import (
-    HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
-)
+from litestar.status_codes import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED
 
-from src.account.schemas import UserCreate
-from src.account.services import UserService, provide_user_service
+from src.auth.jwt_auth import jwt_auth
+from src.core.config import config
 from src.auth.schemas import (
     LoginRequest,
     LoginResponse,
@@ -18,106 +15,131 @@ from src.auth.schemas import (
     RegisterRequest,
     TokenResponse,
 )
-from src.auth.service import AuthService
+from src.auth.services import TokenService, provide_token_service
+from src.account.services import UserService, provide_user_service
+from src.account.schemas import UserCreate
 
 logger = logging.getLogger(__name__)
 
 
-async def provide_auth_service() -> AuthService:
-    return AuthService()
-
-
 class AuthController(Controller):
+    tags = ["Authentication"]
     path = "/auth"
     dependencies = {
+        "token_service": Provide(provide_token_service),
         "user_service": Provide(provide_user_service),
-        "auth_service": Provide(provide_auth_service),
     }
+
+    @post("/login")
+    async def login(
+        self,
+        token_service: TokenService,
+        user_service: UserService,
+        data: LoginRequest,
+    ) -> LoginResponse:
+        try:
+            user = await token_service.authenticate_user(data.email, data.password)
+            if not user:
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect email or password",
+                )
+            access_token = jwt_auth.create_token(
+                identifier=str(user.id),
+                token_expiration=timedelta(
+                    minutes=config.auth.access_token_expire_minutes
+                ),
+                token_extras={"email": user.email, "type": "access"},
+            )
+            refresh_token = token_service.create_refresh_token(user.id, user.email)
+
+            return LoginResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer",
+                user_id=user.id,
+                email=user.email,
+            )
+
+        except Exception as e:
+            logger.error(f"Login error: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Authentication failed",
+            )
 
     @post("/register", status_code=HTTP_201_CREATED)
     async def register(
         self,
         user_service: UserService,
+        token_service: TokenService,
         data: RegisterRequest,
-    ) -> dict:
+    ) -> LoginResponse:
         try:
             user_create = UserCreate(
                 email=data.email,
-                username=data.username,
+                username=data.username or data.email.split("@")[0],
                 password=data.password,
             )
+
             user = await user_service.create(user_create)
-            return {
-                "message": "User registered successfully",
-                "user_id": user.id,
-                "email": user.email,
-                "username": user.username,
-            }
+            access_token = jwt_auth.create_token(
+                identifier=str(user.id),
+                token_expiration=timedelta(
+                    minutes=config.auth.access_token_expire_minutes
+                ),
+                token_extras={"email": user.email, "type": "access"},
+            )
+
+            refresh_token = token_service.create_refresh_token(user.id, user.email)
+
+            return LoginResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer",
+                user_id=user.id,
+                email=user.email,
+            )
+
         except ValueError as e:
-            if "already exists" in str(e).lower():
-                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))  # noqa: B904
-            raise HTTPException(  # noqa: B904
-                status_code=HTTP_400_BAD_REQUEST, detail=f"Validation error: {str(e)}"
-            )
-
-    @post("/login")
-    async def login(
-        self, user_service: UserService, auth_service: AuthService, data: LoginRequest
-    ) -> LoginResponse:
-        user = await auth_service.authenticate_user(
-            user_service,
-            data.email,
-            data.password,
-        )
-        if not user:
-            logger.warning(f"Failed login for email: {data.email}")
+            logger.error(f"Registration error: {e}", exc_info=True)
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
+                status_code=400,
+                detail=str(e),
             )
-        logger.info(f"Login successful for user: {user.id}")
-
-        access_token = auth_service.create_access_token(user)
-        refresh_token = auth_service.create_refresh_token(user)
-        logger.debug(f"Tokens generated for user {user.id}")
-
-        return LoginResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            user_id=user.id,
-            email=user.email,
-        )
+        except Exception as e:
+            logger.error(f"Unexpected registration error: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Registration failed",
+            )
 
     @post("/refresh")
-    async def refresh(
+    async def refresh_token(
         self,
-        user_service: UserService,
-        auth_service: AuthService,
+        token_service: TokenService,
         data: RefreshTokenRequest,
     ) -> TokenResponse:
-        payload = auth_service.verify_token(data.refresh_token)
-        if not payload or payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            )
         try:
-            user_id = int(payload["sub"])
-        except (ValueError, TypeError):
-            raise HTTPException(  # noqa: B904
-                status_code=HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+            result = await token_service.refresh_access_token(data.refresh_token)
+            if not result:
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    detail="Invalid refresh token",
+                )
+            return TokenResponse(
+                access_token=result["access_token"],
+                refresh_token=result["refresh_token"],
+                token_type=result["token_type"],
             )
-        user = await user_service.get_by_id(user_id)
-        if not user:
+
+        except Exception as e:
+            logger.error(f"Token refresh error: {e}", exc_info=True)
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, detail="User not found"
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Token refresh failed",
             )
-        new_access_token = auth_service.create_access_token(user)
-        return TokenResponse(
-            access_token=new_access_token,
-            token_type="bearer",
-        )
 
     @post("/logout")
     async def logout(self) -> dict:
-        return {
-            "message": "Successfully logged out. Please delete tokens on client side."
-        }
+        return {"message": "Successfully logged out"}

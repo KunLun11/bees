@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class UserController(Controller):
+    tags = ["User Accounts"]
     path = "/users"
     dependencies = {"user_service": Provide(provide_user_service)}
 
