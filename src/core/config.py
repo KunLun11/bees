@@ -30,26 +30,6 @@ class AuthConfig:
         os.getenv("REQUIRE_EMAIL_VERIFICATION", "false").lower() == "true"
     )
 
-
-# @dataclass
-# class OAuthConfig:
-#     google_client_id: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
-#     google_client_secret: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
-#     google_redirect_uri: str = os.getenv(
-#         "GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback"
-#     )
-
-#     github_client_id: str = os.getenv("GITHUB_OAUTH_CLIENT_ID", "")
-#     github_client_secret: str = os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "")
-#     github_redirect_uri: str = os.getenv(
-#         "GITHUB_REDIRECT_URI", "http://localhost:8000/auth/github/callback"
-#     )
-
-#     cookie_name: str = "oauth_state"
-#     cookie_secure: bool = os.getenv("OAUTH_COOKIE_SECURE", "false").lower() == "true"
-#     state_expiration: int = int(os.getenv("OAUTH_STATE_EXPIRATION", "600"))
-
-
 @dataclass
 class AppConfig:
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
